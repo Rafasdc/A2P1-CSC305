@@ -36,8 +36,8 @@ float linelength = 0;
 int timercount = 0;
 bool mousemoved = false;
 
-unsigned int width = 512;
-unsigned int height = 512;
+unsigned int width = 1200;
+unsigned int height = 1200;
 
 float Rotation = 0;
 float RotatingSpeed = 0.02;
@@ -108,11 +108,13 @@ const char * vshader_square = " \
         layout (location = 1) in vec3 normal;\
         in vec3 vpoint; \
         uniform mat4 model; \
+        uniform mat4 view;\
+        uniform mat4 pr;\
         uniform mat4 Mv;\
         out vec3 Normal;\
         out vec3 FragPos; \
         void main() { \
-            gl_Position =  Mv*vec4(position,1.0f);\
+            gl_Position =  pr*view*model*vec4(position,1.0f);\
             Normal = normal;\
             FragPos = vec3(model*vec4(position,1.0f));\
         } \
@@ -122,17 +124,21 @@ const char * fshader_square = " \
         #version 330 core \n\
         out vec4 color; \
         in vec3 Normal; \
-        in vec3 FragPos; \
+        in vec3 FragPos;\
+         \
         uniform vec3 objectColor;\
         uniform vec3 lightColor; \
         uniform vec3 lightSource;\
+        \
         void main() {\
             float ambientConstant = 0.1f;\
             vec3 ambient = ambientConstant * lightColor;\
+            \
             vec3 norm = normalize(Normal);\
             vec3 lightDirection = normalize(lightSource - FragPos);\
             float diff = max(dot(norm,lightDirection),0.0);\
             vec3 diffuse = diff * lightColor;\
+            \
             vec3 toApply = (ambient+diffuse) * objectColor;\
             color = vec4(toApply,1.0f);\
         }\
@@ -147,6 +153,8 @@ const char * fshader_square = " \
 GLuint programID = 0;
 GLuint VertexArrayID = 0;
 GLuint modelGL = 0;
+GLuint viewGL = 0;
+GLuint prGL = 0;
 GLuint MvGL = 0;
 GLuint objectColorGL = 0;
 GLuint lightColorGL = 0;
@@ -161,7 +169,7 @@ GLuint MvLGL;
 void InitializeCam(){
 
 
-    model = rotate(model, radians(0.1f), vec3(1.0f,0.0f,0.5f));
+    model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
     view = lookAt(camPos,target,up);
     pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
     Mv = pr * view * model;
@@ -174,7 +182,7 @@ void InitializeCam(){
 void InitializeGL()
 {
 
-
+    glEnable(GL_DEPTH_TEST); //The cube loses 2 faces if this is not enabled.
 
     //Compile the shaders
     programID = compile_shaders(vshader_square, fshader_square);
@@ -200,20 +208,31 @@ void InitializeGL()
     ///--- find the binding point in the shader:
     /// "vpoint" in the vertex shader
     glUseProgram(programID);
-    GLuint vpoint_id = glGetAttribLocation(programID, "vpoint");
-    glEnableVertexAttribArray(vpoint_id);
-    glVertexAttribPointer(vpoint_id,
+    //GLuint vpoint_id = glGetAttribLocation(programID, "vpoint");
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
                           false, //don't normalize
                           6 * sizeof(GLfloat), //stride = 0
                           0); //offset = 0
+    glVertexAttribPointer(1,
+                          3, //size per vertex (3 floats for cord)
+                          GL_FLOAT,
+                          false, //don't normalize
+                          6 * sizeof(GLfloat), //stride = 0
+                          (GLvoid*)(3*sizeof(GLfloat))); //offset = 0
+    glEnableVertexAttribArray(1);
     //Find the binding point for the uniform variable
+    //glEnableVertexAttribArray(vpoint_id);
     MvGL = glGetUniformLocation(programID,"Mv");
     objectColorGL = glGetUniformLocation(programID,"objectColor");
     lightColorGL = glGetUniformLocation(programID,"lightColor");
     lightSourceGL = glGetUniformLocation(programID, "lightSource");
     modelGL = glGetUniformLocation(programID, "model");
+    viewGL = glGetUniformLocation(programID,"view");
+    prGL = glGetUniformLocation(programID,"pr");
+
 
     //glEnableVertexAttribArray(0);
     //glBindVertexArray(0);
@@ -225,13 +244,14 @@ void InitializeGL()
     glBindVertexArray(VertexArrayLight);
 
     glUseProgram(lightID);
-    glEnableVertexAttribArray(vpoint_id);
-    glVertexAttribPointer(vpoint_id,
+    //glEnableVertexAttribArray(vpoint_id);
+    glVertexAttribPointer(0,
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
                           false, //don't normalize
                           6* sizeof(GLfloat), //stride = 0
                           0); //offset = 0
+    glEnableVertexAttribArray(0);
 
     MvLGL = glGetUniformLocation(lightID,"MvL");
 
@@ -274,10 +294,12 @@ void OnPaint()
 
 
     //Binding the openGL context
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(programID);
     glBindVertexArray(VertexArrayID);
+    glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(view));
+    glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(pr));
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
     glUniform3f(objectColorGL, 1.0f,0.5f,0.31f);
     glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
@@ -307,8 +329,8 @@ void HandleLeftClick(){
         float xoffset = vppos_x - lastX;
         float yoffset = lastY - vppos_y;
 
-        xoffset *= 45.5;
-        yoffset *= 45.5;
+        xoffset *= 45;
+        yoffset *= 45;
 
         yaws += xoffset;
         pitchs += yoffset;
@@ -317,10 +339,12 @@ void HandleLeftClick(){
         F.x = cos(radians(yaws) * cos(radians(pitchs)));
         F.y = sin(radians(pitchs));
         F.z = sin(radians(yaws)) * cos(radians(pitchs));
-        normalize(F);
+        //normalize(F);
         camPos = F;
-        view = lookAt(camPos,vec3(0,0,0),up);
-        Mv = pr * view * model;
+        //model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
+        view = lookAt(camPos,target,up);
+        //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
+        //Mv = pr * view * model;
 
     }
 
@@ -331,11 +355,11 @@ void HandleRightClick(){
         if (vppos_y > lastY){
             zoom += 5;
             pr = perspective(/* zoom */ radians(zoom),(float)width/(float)height,0.1f,100.0f);
-            Mv = pr * view * model;
+            //Mv = pr * view * model;
         } else {
             zoom -= 5;
             pr = perspective(/* zoom */ radians(zoom),(float)width/(float)height,0.1f,100.0f);
-            Mv = pr * view * model;
+            //Mv = pr * view * model;
         }
     }
 }

@@ -140,6 +140,7 @@ void Canvas::Show()
         }
 
         glClear(GL_COLOR_BUFFER_BIT);
+
         if (pfun_paint != NULL) pfun_paint();
         if (!clean)
         {
