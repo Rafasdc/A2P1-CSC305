@@ -44,47 +44,47 @@ float RotatingSpeed = 0.02;
 Canvas canvas;
 
 const GLfloat vpoint[] = {
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-    -0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-    -0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
    };
 
 const char * vshader_light = " \
@@ -104,24 +104,38 @@ const char * fshader_light = " \
 
 const char * vshader_square = " \
         #version 330 core \n\
+        layout (location = 0) in vec3 position; \
+        layout (location = 1) in vec3 normal;\
         in vec3 vpoint; \
-        uniform mat4 Mv; \
+        uniform mat4 model; \
+        uniform mat4 Mv;\
+        out vec3 Normal;\
+        out vec3 FragPos; \
         void main() { \
-            gl_Position =  Mv*vec4(vpoint,1.0f);\
+            gl_Position =  Mv*vec4(position,1.0f);\
+            Normal = normal;\
+            FragPos = vec3(model*vec4(position,1.0f));\
         } \
         ";
 
 const char * fshader_square = " \
         #version 330 core \n\
         out vec4 color; \
+        in vec3 Normal; \
+        in vec3 FragPos; \
         uniform vec3 objectColor;\
         uniform vec3 lightColor; \
-        float ambientConstant = 0.1f;\
-        vec3 ambient = ambientConstant * lightColor;\
-        vec3 toApply = ambient*objectColor;\
+        uniform vec3 lightSource;\
         void main() {\
+            float ambientConstant = 0.1f;\
+            vec3 ambient = ambientConstant * lightColor;\
+            vec3 norm = normalize(Normal);\
+            vec3 lightDirection = normalize(lightSource - FragPos);\
+            float diff = max(dot(norm,lightDirection),0.0);\
+            vec3 diffuse = diff * lightColor;\
+            vec3 toApply = (ambient+diffuse) * objectColor;\
             color = vec4(toApply,1.0f);\
-        } //Set pixel to red \
+        }\
         ";
 
 
@@ -132,9 +146,11 @@ const char * fshader_square = " \
 //OpenGL context variables
 GLuint programID = 0;
 GLuint VertexArrayID = 0;
+GLuint modelGL = 0;
 GLuint MvGL = 0;
 GLuint objectColorGL = 0;
 GLuint lightColorGL = 0;
+GLuint lightSourceGL = 0;
 
 GLuint lightID = 0;
 GLuint VertexArrayLight = 0;
@@ -190,12 +206,14 @@ void InitializeGL()
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
                           false, //don't normalize
-                          0, //stride = 0
+                          6 * sizeof(GLfloat), //stride = 0
                           0); //offset = 0
     //Find the binding point for the uniform variable
     MvGL = glGetUniformLocation(programID,"Mv");
     objectColorGL = glGetUniformLocation(programID,"objectColor");
     lightColorGL = glGetUniformLocation(programID,"lightColor");
+    lightSourceGL = glGetUniformLocation(programID, "lightSource");
+    modelGL = glGetUniformLocation(programID, "model");
 
     //glEnableVertexAttribArray(0);
     //glBindVertexArray(0);
@@ -212,7 +230,7 @@ void InitializeGL()
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
                           false, //don't normalize
-                          0, //stride = 0
+                          6* sizeof(GLfloat), //stride = 0
                           0); //offset = 0
 
     MvLGL = glGetUniformLocation(lightID,"MvL");
@@ -263,6 +281,8 @@ void OnPaint()
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
     glUniform3f(objectColorGL, 1.0f,0.5f,0.31f);
     glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
+    glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
+    glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(model));
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
 
