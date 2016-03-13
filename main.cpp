@@ -17,6 +17,7 @@ mat4 model;
 mat4 view;
 mat4 pr;
 mat4 Mv;
+mat4 MvL;
 
 
 float lastX = 256;
@@ -86,7 +87,20 @@ const GLfloat vpoint[] = {
     -0.5f,  0.5f, -0.5f,
    };
 
+const char * vshader_light = " \
+        #version 330 core \n\
+        in vec3 vpoint; \
+        uniform mat4 MvL; \
+        void main() { \
+            gl_Position =  MvL*vec4(vpoint,1.0f);\
+        } \
+        ";
 
+const char * fshader_light = " \
+        #version 330 core \n\
+        out vec3 color; \
+        void main() { color = vec3(1, 1, 1);} \
+        ";
 
 const char * vshader_square = " \
         #version 330 core \n\
@@ -99,9 +113,14 @@ const char * vshader_square = " \
 
 const char * fshader_square = " \
         #version 330 core \n\
-        out vec3 color; \
+        out vec4 color; \
+        uniform vec3 objectColor;\
+        uniform vec3 lightColor; \
+        float ambientConstant = 0.1f;\
+        vec3 ambient = ambientConstant * lightColor;\
+        vec3 toApply = ambient*objectColor;\
         void main() {\
-            color = vec3(1.0f,0.0f,0.0f);\
+            color = vec4(toApply,1.0f);\
         } //Set pixel to red \
         ";
 
@@ -114,6 +133,12 @@ const char * fshader_square = " \
 GLuint programID = 0;
 GLuint VertexArrayID = 0;
 GLuint MvGL = 0;
+GLuint objectColorGL = 0;
+GLuint lightColorGL = 0;
+
+GLuint lightID = 0;
+GLuint VertexArrayLight = 0;
+GLuint MvLGL;
 
 
 
@@ -124,12 +149,10 @@ void InitializeCam(){
     view = lookAt(camPos,target,up);
     pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
     Mv = pr * view * model;
-    /*
-    mat4 modelL = model;
-    modelL = translate(model, lPos);
-    modelL = scale(model,vec3(0.01f));
+    mat4 modelL;
+    modelL = translate(modelL, vec3(-0.75f,-1.95f,0.75f));
+    modelL = scale(modelL,vec3(0.35f));
     MvL = pr* view * modelL;
-    */
 
 }
 void InitializeGL()
@@ -171,8 +194,29 @@ void InitializeGL()
                           0); //offset = 0
     //Find the binding point for the uniform variable
     MvGL = glGetUniformLocation(programID,"Mv");
+    objectColorGL = glGetUniformLocation(programID,"objectColor");
+    lightColorGL = glGetUniformLocation(programID,"lightColor");
+
     //glEnableVertexAttribArray(0);
     //glBindVertexArray(0);
+
+// ------------- light ---------------
+
+    lightID = compile_shaders(vshader_light, fshader_light);
+    glGenVertexArrays(1, &VertexArrayLight);
+    glBindVertexArray(VertexArrayLight);
+
+    glUseProgram(lightID);
+    glEnableVertexAttribArray(vpoint_id);
+    glVertexAttribPointer(vpoint_id,
+                          3, //size per vertex (3 floats for cord)
+                          GL_FLOAT,
+                          false, //don't normalize
+                          0, //stride = 0
+                          0); //offset = 0
+
+    MvLGL = glGetUniformLocation(lightID,"MvL");
+
 
 
 
@@ -211,23 +255,28 @@ void OnPaint()
 {
 
 
-
-
-
-
-
-
     //Binding the openGL context
     glClear(GL_COLOR_BUFFER_BIT);
+
     glUseProgram(programID);
     glBindVertexArray(VertexArrayID);
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
+    glUniform3f(objectColorGL, 1.0f,0.5f,0.31f);
+    glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
+
 
     glUseProgram(0);
     glBindVertexArray(0);
 
+
+    glUseProgram(lightID);
+    glBindVertexArray(VertexArrayID);
+    glUniformMatrix4fv(MvLGL,1,GL_FALSE,value_ptr(MvL));
+    glDrawArrays(GL_TRIANGLES,0,36);
+    glUseProgram(0);
+    glBindVertexArray(0);
 
 
 
