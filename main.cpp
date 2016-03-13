@@ -13,7 +13,7 @@ vector<vec3> SQ;
 
 vec3 camPos(0.0f,0.0f,3.0f);
 vec3 up(0.0f,1.0f,0.0f);
-vec3 front(0.0f,0.0f,-1.0f);
+vec3 target(0.0f,0.0f,0.0f);
 
 mat4 model;
 mat4 view;
@@ -44,14 +44,13 @@ void MouseMove(double x, double y)
     lastX = vppos_x;
     lastY = vppos_y;
     //fprintf(stderr, "last_x is %.5f\n", lastX);
-    fprintf(stderr, "last_y is %.5f\n", lastY);
+    //fprintf(stderr, "last_y is %.5f\n", lastY);
+
    //the pointer has moved
    vppos_x = (float)(x) / 256 - 1;
    vppos_y = 1 - (float)(y) / 256;
    //fprintf(stderr, "vppos_x is %.5f\n", vppos_x);
-   fprintf(stderr, "vppos_y is %.5f\n", vppos_y);
-
-   //fprintf(stderr,"mouse has moved\n");
+   //fprintf(stderr, "vppos_y is %.5f\n", vppos_y);
    mousemoved= true;
 
 
@@ -78,33 +77,9 @@ void KeyPress(char keychar)
     fprintf(stderr, "The \"%c\" key is pressed!\n", keychar);
 }
 
-void DrawCross(float x_center, float y_center)
-{
-    canvas.AddLine(x_center - linelength,
-                   y_center - linelength,
-                   x_center + linelength,
-                   y_center + linelength);
-
-    canvas.AddLine(x_center - linelength,
-                   y_center + linelength,
-                   x_center + linelength,
-                   y_center - linelength);
-}
-
-void DrawSquare(float x_center, float y_center)
-{
-    canvas.AddLine(x_center - linelength, y_center - linelength, x_center - linelength, y_center + linelength);
-    canvas.AddLine(x_center - linelength, y_center + linelength, x_center + linelength, y_center + linelength);
-    canvas.AddLine(x_center + linelength, y_center + linelength, x_center + linelength, y_center - linelength);
-    canvas.AddLine(x_center + linelength, y_center - linelength, x_center - linelength, y_center - linelength);
-}
-
 void OnPaint()
 {
     canvas.Clear();
-    DrawCross(vppos_x, vppos_y);
-
-
 
     //Draw first face
     for (int i = 0; i < SquareVertices.size() -1 ; i++){
@@ -190,21 +165,9 @@ void OnTimer()
     linelength = (float)(sin(timercount / 10.0) * 0.1 + 0.1);
     timercount ++;
 
-    //mousemoved = false;
     HandleLeftClick();
     mousemoved = false;
     HandleRightClick();
-
-
-
-
-
-
-
-    //camPos.x += 7;
-
-    //view = translate(view,vec3(0.0f,0.0f,-3.0f));
-
 
 }
 
@@ -212,12 +175,9 @@ int main(int, char **){
 
     //model = translate(model, -camPos);
     model = rotate(model, radians(0.1f), vec3(1.0f,0.0f,0.5f));
-    view = lookAt(camPos,camPos+front,up);
+    view = lookAt(camPos,target,up);
     pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
     Mv = pr * view * model;
-
-
-
 
     //first face
     SquareVertices.push_back(vec3(0.25,0.25,0.25));//down
