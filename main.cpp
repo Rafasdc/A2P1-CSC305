@@ -15,13 +15,13 @@ vec3 target(0.0f,0.0f,0.0f);
 
 
 mat4 model;
-mat4 modelSQ;
+mat4 modelSQ; //second square model
 mat4 view;
-mat4 viewSQ;
+mat4 viewSQ; //second square view
 mat4 pr;
-mat4 prSQ;
+mat4 prSQ; //second square pr
 mat4 Mv;
-mat4 MvL;
+mat4 MvL; //lighting Mv no longer used
 
 
 float lastX = 0;
@@ -48,7 +48,7 @@ Canvas canvas;
 
 
 
-const GLfloat vpoint[] = {
+ const GLfloat vpoint[] = {
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
      0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
      0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -92,6 +92,51 @@ const GLfloat vpoint[] = {
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
    };
 
+GLfloat square_vertices[36][3] = {
+    {-0.5f, -0.5f, -0.5f},
+    {0.5f, -0.5f, -0.5f},
+    {0.5f,  0.5f, -0.5f},
+    {0.5f,  0.5f, -0.5f},
+    {-0.5f,  0.5f, -0.5f},
+    {-0.5f, -0.5f, -0.5f},
+
+    {-0.5f, -0.5f,  0.5f},
+    {0.5f, -0.5f,  0.5f},
+    { 0.5f,  0.5f,  0.5f},
+    { 0.5f,  0.5f,  0.5f},
+    {-0.5f,  0.5f,  0.5f},
+    {-0.5f, -0.5f,  0.5f},
+
+    {-0.5f,  0.5f,  0.5f},
+    {-0.5f,  0.5f, -0.5f},
+    {-0.5f, -0.5f, -0.5f},
+    {-0.5f, -0.5f, -0.5f},
+    {-0.5f, -0.5f,  0.5f},
+    {-0.5f,  0.5f,  0.5f},
+
+    {0.5f,  0.5f,  0.5f},
+    { 0.5f,  0.5f, -0.5f},
+    { 0.5f, -0.5f, -0.5f},
+    { 0.5f, -0.5f, -0.5f},
+    { 0.5f, -0.5f,  0.5f},
+    { 0.5f,  0.5f,  0.5f},
+
+    {-0.5f, -0.5f, -0.5f},
+    {0.5f, -0.5f, -0.5f},
+    { 0.5f, -0.5f,  0.5f},
+    { 0.5f, -0.5f,  0.5f},
+    {-0.5f, -0.5f,  0.5f},
+    {-0.5f, -0.5f, -0.5f},
+
+    {-0.5f,  0.5f, -0.5f},
+    {0.5f,  0.5f, -0.5f},
+    {0.5f,  0.5f,  0.5f},
+    {0.5f,  0.5f,  0.5f},
+    {-0.5f,  0.5f,  0.5f},
+    {-0.5f,  0.5f, -0.5f},
+};
+
+
 const GLfloat octa_vpoints[6][3] = {
      {1.0f,  0.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
      {0.0f,  1.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
@@ -103,19 +148,61 @@ const GLfloat octa_vpoints[6][3] = {
 };
 
 
-#define X .525731112119133606
-#define Z .850650808352039932
+\
 
-static GLfloat vdata[12][3] = {
-   {-X, 0.0, Z}, {X, 0.0, Z}, {-X, 0.0, -Z}, {X, 0.0, -Z},
-   {0.0, Z, X}, {0.0, Z, -X}, {0.0, -Z, X}, {0.0, -Z, -X},
-   {Z, X, 0.0}, {-Z, X, 0.0}, {Z, -X, 0.0}, {-Z, -X, 0.0}
-};
-static GLuint tindices[20][3] = {
-   {0,4,1}, {0,9,4}, {9,5,4}, {4,5,8}, {4,8,1},
-   {8,10,1}, {8,3,10}, {5,3,8}, {5,2,3}, {2,7,3},
-   {7,10,3}, {7,6,10}, {7,11,6}, {11,0,6}, {0,1,6},
-   {6,1,10}, {9,0,11}, {9,11,2}, {9,2,5}, {7,2,11} };
+
+vector<GLfloat> vertices;
+vector<GLfloat> normals;
+vector<GLfloat> texture;
+vector<GLuint> indices;
+
+void normalize3f(float v[3]){
+    GLfloat d = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (d == 0.0f){
+    //    fprintf(stderr, "Zero length vector. \n");
+        return;
+    }
+    v[0] /= d;
+    v[1] /= d;
+    v[2] /= d;
+}
+
+void addVertices(GLfloat v[]){
+    for (int i = 0; i < 3; i++){
+        vertices.push_back(v[i]);
+    }
+}
+
+void subdivide(GLfloat v1[], GLfloat v2[], GLfloat v3[], int depth)
+{
+    GLfloat v12[3], v23[3], v31[3];
+
+    if (depth == 0){
+        addVertices(v1);
+        addVertices(v2);
+        addVertices(v3);
+        //indices.push_back(numberOfVerices);
+        //numberOfVerices++;
+        return;
+    }
+
+    for (int i = 0; i < 3; i++){
+        v12[i] = v1[i]+v2[i];
+        v23[i] = v2[i]+v3[i];
+        v31[i] = v3[i]+v1[i];
+    }
+
+    normalize3f(v12);
+    normalize3f(v23);
+    normalize3f(v31);
+    subdivide(v1, v12, v31, depth-1);
+    subdivide(v2, v23, v12, depth-1);
+    subdivide(v3, v31, v23, depth-1);
+    subdivide(v12, v23, v31, depth-1);
+}
+
+
+
 
 
 const char * vshader_light = " \
@@ -286,7 +373,15 @@ GLuint skyBoxID = 0;
 
 
 void InitializeCam(){
-
+       for (int i = 0; i <36; i++){
+            subdivide(square_vertices[i],square_vertices[i+1],square_vertices[i+2],3);
+        }
+       //fprintf(stderr,"%d\n",vertices.size());
+       /*
+       for (int i = 0; i< vertices.size(); i++){
+           fprintf(stderr,"%.1f\n",vertices[i]);
+       }
+       */
 
     model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
     view = lookAt(camPos,target,up);
@@ -385,6 +480,7 @@ void InitializeGL()
 
 
 
+
     sphereID = compile_shaders(vshader_sphere, fshader_sphere);
 
     glGenVertexArrays(1, &VertexArraySphere);
@@ -396,7 +492,7 @@ void InitializeGL()
     /// The subsequent commands will affect the specified buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     /// Pass the vertex positions to OpenGL
-    glBufferData(GL_ARRAY_BUFFER, sizeof(octa_vpoints), octa_vpoints, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(GLfloat),&vertices[0], GL_STATIC_DRAW);
 
 
     glUseProgram(sphereID);
@@ -464,7 +560,7 @@ void OnPaint()
     glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
     glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(model));
     glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
-    glDrawArrays(GL_TRIANGLES,0,36);
+    glDrawArrays(GL_TRIANGLES,0,vertices.size());
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
@@ -515,10 +611,10 @@ void OnPaint()
     mat4 modelS;
     modelS = translate(modelS, vec3(-1.25f,-0.35f,0.75f));
     glUniformMatrix4fv(MvGL_sphere,1,GL_FALSE,value_ptr(MvL));
-    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(view));
-    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(pr));
+    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(viewSQ));
+    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(prSQ));
     glUniformMatrix4fv(modelGL_sphere,1,GL_FALSE,value_ptr(modelS));
-    //glDrawArrays(GL_TRIANGLES,0,6);
+    glDrawArrays(GL_TRIANGLES,0,vertices.size());
     glUseProgram(0);
     glBindVertexArray(0);
 
