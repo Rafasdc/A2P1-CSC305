@@ -24,9 +24,9 @@ mat4 Mv;
 mat4 MvL; //lighting Mv no longer used
 
 
-float lastX = 0;
-float lastY = 0;
-float yaws = 45.0f;
+float lastX = 600;
+float lastY = 600;
+float yaws = -90.0f;
 float pitchs = 0.0f;
 
 float zoom = -85;
@@ -153,8 +153,8 @@ const GLfloat octa_vpoints[6][3] = {
 
 vector<GLfloat> vertices;
 vector<GLfloat> normals;
-vector<GLfloat> texture;
-vector<GLuint> indices;
+
+//---------- Code to Subdivide by Trung Bun stackoverflow.com -------------
 
 void normalize3f(float v[3]){
     GLfloat d = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
@@ -165,6 +165,9 @@ void normalize3f(float v[3]){
     v[0] /= d;
     v[1] /= d;
     v[2] /= d;
+    normals.push_back(v[0]);
+    normals.push_back(v[1]);
+    normals.push_back(v[2]);
 }
 
 void addVertices(GLfloat v[]){
@@ -181,8 +184,6 @@ void subdivide(GLfloat v1[], GLfloat v2[], GLfloat v3[], int depth)
         addVertices(v1);
         addVertices(v2);
         addVertices(v3);
-        //indices.push_back(numberOfVerices);
-        //numberOfVerices++;
         return;
     }
 
@@ -201,6 +202,7 @@ void subdivide(GLfloat v1[], GLfloat v2[], GLfloat v3[], int depth)
     subdivide(v12, v23, v31, depth-1);
 }
 
+// -------------- -end code to subdivide -------------------------------
 
 
 
@@ -282,16 +284,41 @@ const char * fshader_square = " \
                 uniform mat4 view;\
                 uniform mat4 pr;\
                 uniform mat4 Mv;\
+                out vec3 Normal;\
+                out vec3 FragPos;\
                 void main() { \
                     gl_Position =  pr*view*model*vec4(octa_vpoints,1.0f);\
+                    Normal = octa_vpoints;\
+                    FragPos = vec3(model*vec4(octa_vpoints,1.0f));\
                 } \
                 ";
 
         const char * fshader_sphere = " \
                 #version 330 core \n\
-                out vec4 color; \
+                out vec4 color;\
+                in vec3 Normal;\
+                in vec3 FragPos; \
+                uniform vec3 lightSource;\
+                uniform vec3 lightColor;\
+                uniform vec3 objectColor;\
+                uniform vec3 viewPos;\
                 void main() {\
-                    color = vec4(1.0f);\
+                float ambientConstant = 0.1f;\
+                vec3 ambient = ambientConstant * lightColor;\
+                \
+                vec3 norm = normalize(Normal);\
+                vec3 lightDirection = normalize(lightSource - FragPos);\
+                float diff = max(dot(norm,lightDirection),0.0);\
+                vec3 diffuse = diff * lightColor;\
+                \
+                float specIntensity = 0.25f;\
+                vec3 viewD = normalize(viewPos-FragPos);\
+                vec3 reflectD = reflect(-lightDirection,norm);\
+                float spec = pow(max(dot(viewPos,reflectD),0.0),1);\
+                vec3 finalSpecular = specIntensity * spec * lightColor;\
+                \
+                vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
+                color = vec4(toApply,1.0f);\
                 }\
                 ";
         const char * vshader_sky = " \
@@ -365,6 +392,10 @@ GLuint MvGL_sphere = 0;
 GLuint modelGL_sphere = 0;
 GLuint viewGL_sphere = 0;
 GLuint prGL_sphere = 0;
+GLuint objectColorGL_sphere = 0;
+GLuint lightColorGL_sphere = 0;
+GLuint lightSourceGL_sphere = 0;
+GLuint viewPosGL_sphere = 0;
 
 GLuint skyBoxID = 0;
 
@@ -377,11 +408,12 @@ void InitializeCam(){
             subdivide(square_vertices[i],square_vertices[i+1],square_vertices[i+2],3);
         }
        //fprintf(stderr,"%d\n",vertices.size());
-       /*
-       for (int i = 0; i< vertices.size(); i++){
-           fprintf(stderr,"%.1f\n",vertices[i]);
-       }
-       */
+       //fprintf(stderr,"%d\n",normals.size());
+
+       //for (int i = 0; i< vertices.size(); i++){
+       //    fprintf(stderr,"%.1f,%.1f,%.1f\n",vertices[i],vertices[i+1],vertices[i+2]);
+       //}
+
 
     model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
     view = lookAt(camPos,target,up);
@@ -458,7 +490,7 @@ void InitializeGL()
 
 // ------------- light ---------------
 
-    lightID = compile_shaders(vshader_light, fshader_sphere);
+    lightID = compile_shaders(vshader_light, fshader_light);
     glGenVertexArrays(1, &VertexArrayLight);
     glBindVertexArray(VertexArrayLight);
 
@@ -508,6 +540,10 @@ void InitializeGL()
     modelGL_sphere = glGetUniformLocation(sphereID, "model");
     viewGL_sphere = glGetUniformLocation(sphereID,"view");
     prGL_sphere = glGetUniformLocation(sphereID,"pr");
+    objectColorGL_sphere = glGetUniformLocation(sphereID,"objectColor");
+    lightColorGL_sphere = glGetUniformLocation(sphereID,"lightColor");
+    lightSourceGL_sphere = glGetUniformLocation(sphereID, "lightSource");
+    viewPosGL_sphere = glGetUniformLocation(sphereID,"viewPos");
 
 
 
@@ -550,8 +586,8 @@ void OnPaint()
     //Binding the openGL context
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(programID);
-    glBindVertexArray(VertexArrayID);
+    glUseProgram(sphereID);
+    glBindVertexArray(VertexArraySphere);
     glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(view));
     glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(pr));
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
@@ -609,11 +645,16 @@ void OnPaint()
     glUseProgram(sphereID);
     glBindVertexArray(VertexArraySphere);
     mat4 modelS;
-    modelS = translate(modelS, vec3(-1.25f,-0.35f,0.75f));
+    modelS = translate(modelS, vec3(1.25f,-0.35f,0.75f));
     glUniformMatrix4fv(MvGL_sphere,1,GL_FALSE,value_ptr(MvL));
-    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(viewSQ));
-    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(prSQ));
-    glUniformMatrix4fv(modelGL_sphere,1,GL_FALSE,value_ptr(modelS));
+    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(view));
+    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(pr));
+    glUniformMatrix4fv(modelGL_sphere,1,GL_FALSE,value_ptr(modelSQ));
+    glUniform3f(objectColorGL_sphere, 0.7f,0.5f,1.0f);
+    glUniform3f(lightColorGL_sphere, 1.0f,1.0f,1.0f);
+    glUniform3f(lightSourceGL_sphere, -0.75f,-1.95f,0.75f);
+    glUniform3f(viewPosGL_sphere, camPos.x,camPos.y,camPos.z);
+    //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     glDrawArrays(GL_TRIANGLES,0,vertices.size());
     glUseProgram(0);
     glBindVertexArray(0);
@@ -632,20 +673,20 @@ void HandleLeftClick(){
         float xoffset = vppos_x - lastX;
         float yoffset = lastY - vppos_y;
 
-        xoffset *= 45;
-        yoffset *= 45;
+        xoffset *= 195;
+        yoffset *= 195;
 
         yaws += xoffset;
         pitchs += yoffset;
 
         vec3 F;
-        F.x = cos(radians(yaws) * cos(radians(pitchs)));
+        F.x = cos(radians(yaws)  * cos(radians(pitchs)));
         F.y = sin(radians(pitchs));
-        F.z = sin(radians(yaws)) * cos(radians(pitchs));
+        F.z = sin(radians(yaws))  * cos(radians(pitchs));
         normalize(F);
-        camPos = F;
+        //camPos = F;
         //model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
-        view = lookAt(camPos,vec3(0,0,0),up);
+        view = lookAt(camPos,target,up);
         //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
         //Mv = pr * view * model;
 
@@ -692,7 +733,7 @@ int main(int, char **){
     canvas.SetMouseButton(MouseButton);
     canvas.SetKeyPress(KeyPress);
     canvas.SetOnPaint(OnPaint);
-    canvas.SetTimer(0.05, OnTimer);
+    canvas.SetTimer(0.1, OnTimer);
     //Show Window
     canvas.Initialize(width, height, "Rotating Square Demo");
     //Do our initialization
