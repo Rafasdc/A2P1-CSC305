@@ -3,6 +3,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "incbase.h"
 
 
 using namespace glm;
@@ -44,6 +45,8 @@ unsigned int height = 1200;
 float Rotation = 0;
 float RotatingSpeed = 0.02;
 Canvas canvas;
+
+
 
 const GLfloat vpoint[] = {
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -99,12 +102,32 @@ const GLfloat octa_vpoints[6][3] = {
 
 };
 
+
+#define X .525731112119133606
+#define Z .850650808352039932
+
+static GLfloat vdata[12][3] = {
+   {-X, 0.0, Z}, {X, 0.0, Z}, {-X, 0.0, -Z}, {X, 0.0, -Z},
+   {0.0, Z, X}, {0.0, Z, -X}, {0.0, -Z, X}, {0.0, -Z, -X},
+   {Z, X, 0.0}, {-Z, X, 0.0}, {Z, -X, 0.0}, {-Z, -X, 0.0}
+};
+static GLuint tindices[20][3] = {
+   {0,4,1}, {0,9,4}, {9,5,4}, {4,5,8}, {4,8,1},
+   {8,10,1}, {8,3,10}, {5,3,8}, {5,2,3}, {2,7,3},
+   {7,10,3}, {7,6,10}, {7,11,6}, {11,0,6}, {0,1,6},
+   {6,1,10}, {9,0,11}, {9,11,2}, {9,2,5}, {7,2,11} };
+
+
 const char * vshader_light = " \
         #version 330 core \n\
         in vec3 vpoint; \
         uniform mat4 MvL; \
         void main() { \
-            gl_Position =  MvL*vec4(vpoint,1.0f);\
+            normalize(vpoint);\
+            float x = vpoint.x*sqrt(1-(vpoint.y*vpoint.y)/2 - (vpoint.z*vpoint.z)/2 + (vpoint.y*vpoint.y*vpoint.z*vpoint.z)/3);\
+            float y = vpoint.y*sqrt(1-(vpoint.z*vpoint.z)/2 - (vpoint.x*vpoint.x)/2+(vpoint.z*vpoint.z*vpoint.x*vpoint.x)/3);\
+            float z = vpoint.z*sqrt(1-(vpoint.x*vpoint.x)/2 - (vpoint.y*vpoint.y)/2 + (vpoint.x*vpoint.x*vpoint.y*vpoint.y)/3);\
+            gl_Position = MvL* vec4(x,y,z,1.0f);\
         } \
         ";
 
@@ -184,7 +207,54 @@ const char * fshader_square = " \
                     color = vec4(1.0f);\
                 }\
                 ";
+        const char * vshader_sky = " \
+                #version 330 core \n\
+                layout (location = 0) in vec3 position; \
+                layout (location = 1) in vec3 normal;\
+                in vec3 vpoint; \
+                uniform mat4 model; \
+                uniform mat4 view;\
+                uniform mat4 pr;\
+                uniform mat4 Mv;\
+                out vec3 Normal;\
+                out vec3 FragPos; \
+                void main() { \
+                    gl_Position =  pr*view*model*vec4(position,1.0f);\
+                    Normal = normal;\
+                    FragPos = vec3(model*vec4(position,1.0f));\
+                } \
+                ";
 
+        const char * fshader_sky = " \
+                #version 330 core \n\
+                out vec4 color; \
+                in vec3 Normal; \
+                in vec3 FragPos;\
+                 \
+                uniform vec3 objectColor;\
+                uniform vec3 lightColor; \
+                uniform vec3 lightSource;\
+                uniform vec3 viewPos; \
+                \
+                void main() {\
+                    float ambientConstant = 0.1f;\
+                    vec3 ambient = ambientConstant * lightColor;\
+                    \
+                    vec3 norm = normalize(Normal);\
+                    vec3 lightDirection = normalize(lightSource - FragPos);\
+                    float diff = max(dot(norm,lightDirection),0.0);\
+                    vec3 diffuse = diff * lightColor;\
+                    \
+                    float specIntensity = 0.5f;\
+                    vec3 viewD = normalize(viewPos-FragPos);\
+                    vec3 reflectD = reflect(-lightDirection,norm);\
+                    float spec = pow(max(dot(viewPos,reflectD),0.0),32);\
+                    vec3 finalSpecular = specIntensity * spec * lightColor;\
+                    \
+                    vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
+                    color = vec4(toApply,1.0f);\
+                }\
+                ";
 
 //OpenGL context variables
 GLuint programID = 0;
@@ -208,6 +278,8 @@ GLuint MvGL_sphere = 0;
 GLuint modelGL_sphere = 0;
 GLuint viewGL_sphere = 0;
 GLuint prGL_sphere = 0;
+
+GLuint skyBoxID = 0;
 
 
 
@@ -237,6 +309,7 @@ void InitializeGL()
 
     //Compile the shaders
     programID = compile_shaders(vshader_square, fshader_square);
+    skyBoxID = compile_shaders(vshader_sky,fshader_sky);
 
 
     //Generate Vertex Array and bind the vertex buffer data
@@ -252,7 +325,7 @@ void InitializeGL()
     /// The subsequent commands will affect the specified buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     /// Pass the vertex positions to OpenGL
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint), vpoint, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint), vpoint, GL_DYNAMIC_DRAW);
 
     ///--- find the binding point in the shader:
     /// "vpoint" in the vertex shader
@@ -391,7 +464,7 @@ void OnPaint()
     glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
     glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(model));
     glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
-    glDrawArrays(GL_TRIANGLES, 0 , 36);
+    glDrawArrays(GL_TRIANGLES,0,36);
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
@@ -411,7 +484,20 @@ void OnPaint()
     glUseProgram(0);
     glBindVertexArray(0);
 
-
+    glUseProgram(skyBoxID);
+    glBindVertexArray(VertexArrayID);
+    glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(viewSQ));
+    glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(prSQ));
+    glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
+    glUniform3f(objectColorGL, 0.3f,0.5f,0.31f);
+    glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
+    glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
+    glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(modelSQ));
+    glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
+    glDrawArrays(GL_TRIANGLES, 0 , 36);
+    //Clean up the openGL context for other drawings
+    glUseProgram(0);
+    glBindVertexArray(0);
 
 
     glUseProgram(lightID);
@@ -467,12 +553,15 @@ void HandleLeftClick(){
         //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
         //Mv = pr * view * model;
 
+
+
     }
 
 }
 
 void HandleRightClick(){
     if (rightButtonPressed){
+
 
         if (vppos_y > lastY){
             zoom += 5;
@@ -496,7 +585,8 @@ void OnTimer()
     GLfloat radius = 2.5f;
     GLfloat camX = cos(glfwGetTime()*radius);
     GLfloat camZ = sin(glfwGetTime()*radius);
-    viewSQ = lookAt(vec3(camX,0.0,camZ), camPos,up);
+    viewSQ = lookAt(vec3(camX,0.0,camZ), vec3(0.0f,0.0f,3.0f),up);
+
 }
 
 int main(int, char **){
