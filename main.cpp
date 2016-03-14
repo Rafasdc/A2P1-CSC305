@@ -14,19 +14,21 @@ vec3 target(0.0f,0.0f,0.0f);
 
 
 mat4 model;
+mat4 modelSQ;
 mat4 view;
+mat4 viewSQ;
 mat4 pr;
+mat4 prSQ;
 mat4 Mv;
 mat4 MvL;
 
 
-float lastX = 256;
-float lastY = 256;
-float yaws = -90.0f;
+float lastX = 0;
+float lastY = 0;
+float yaws = 45.0f;
 float pitchs = 0.0f;
 
 float zoom = -85;
-float rotateCube = 25;
 
 float vppos_x = 0;
 float vppos_y = 0;
@@ -87,6 +89,16 @@ const GLfloat vpoint[] = {
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
    };
 
+const GLfloat octa_vpoints[6][3] = {
+     {1.0f,  0.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
+     {0.0f,  1.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
+     {0.0f,  0.0f,  1.0f},  //0.0f,  1.0f,  0.0f,
+    {-1.0f,  0.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
+     {0.0f, -1.0f,  0.0f},  //0.0f,  1.0f,  0.0f,
+     {0.0f,  0.0f, -1.0f}  //0.0f,  1.0f,  0.0f,
+
+};
+
 const char * vshader_light = " \
         #version 330 core \n\
         in vec3 vpoint; \
@@ -129,6 +141,7 @@ const char * fshader_square = " \
         uniform vec3 objectColor;\
         uniform vec3 lightColor; \
         uniform vec3 lightSource;\
+        uniform vec3 viewPos; \
         \
         void main() {\
             float ambientConstant = 0.1f;\
@@ -139,14 +152,38 @@ const char * fshader_square = " \
             float diff = max(dot(norm,lightDirection),0.0);\
             vec3 diffuse = diff * lightColor;\
             \
-            vec3 toApply = (ambient+diffuse) * objectColor;\
+            float specIntensity = 0.5f;\
+            vec3 viewD = normalize(viewPos-FragPos);\
+            vec3 reflectD = reflect(-lightDirection,norm);\
+            float spec = pow(max(dot(viewPos,reflectD),0.0),32);\
+            vec3 finalSpecular = specIntensity * spec * lightColor;\
+            \
+            vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
             color = vec4(toApply,1.0f);\
         }\
         ";
 
 
 
+        const char * vshader_sphere = " \
+                #version 330 core \n\
+                in vec3 octa_vpoints; \
+                uniform mat4 model; \
+                uniform mat4 view;\
+                uniform mat4 pr;\
+                uniform mat4 Mv;\
+                void main() { \
+                    gl_Position =  pr*view*model*vec4(octa_vpoints,1.0f);\
+                } \
+                ";
 
+        const char * fshader_sphere = " \
+                #version 330 core \n\
+                out vec4 color; \
+                void main() {\
+                    color = vec4(1.0f);\
+                }\
+                ";
 
 
 //OpenGL context variables
@@ -159,10 +196,20 @@ GLuint MvGL = 0;
 GLuint objectColorGL = 0;
 GLuint lightColorGL = 0;
 GLuint lightSourceGL = 0;
+GLuint viewPosGL = 0;
 
 GLuint lightID = 0;
 GLuint VertexArrayLight = 0;
 GLuint MvLGL;
+
+GLuint sphereID = 0;
+GLuint VertexArraySphere = 0;
+GLuint MvGL_sphere = 0;
+GLuint modelGL_sphere = 0;
+GLuint viewGL_sphere = 0;
+GLuint prGL_sphere = 0;
+
+
 
 
 
@@ -177,6 +224,10 @@ void InitializeCam(){
     modelL = translate(modelL, vec3(-0.75f,-1.95f,0.75f));
     modelL = scale(modelL,vec3(0.35f));
     MvL = pr* view * modelL;
+    modelSQ = translate(modelSQ, vec3(0.25f,-0.35f,1.5f));
+    modelSQ = scale(modelSQ,vec3(0.15f));
+    viewSQ = lookAt(camPos,target,up);
+    prSQ = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
 
 }
 void InitializeGL()
@@ -192,8 +243,6 @@ void InitializeGL()
 
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
-    //glGenVertexArrays(1, &programID);
-    //glBindVertexArray(programID);
 
 
 
@@ -232,6 +281,8 @@ void InitializeGL()
     modelGL = glGetUniformLocation(programID, "model");
     viewGL = glGetUniformLocation(programID,"view");
     prGL = glGetUniformLocation(programID,"pr");
+    viewPosGL = glGetUniformLocation(programID,"viewPos");
+
 
 
     //glEnableVertexAttribArray(0);
@@ -239,9 +290,10 @@ void InitializeGL()
 
 // ------------- light ---------------
 
-    lightID = compile_shaders(vshader_light, fshader_light);
+    lightID = compile_shaders(vshader_light, fshader_sphere);
     glGenVertexArrays(1, &VertexArrayLight);
     glBindVertexArray(VertexArrayLight);
+
 
     glUseProgram(lightID);
     //glEnableVertexAttribArray(vpoint_id);
@@ -253,7 +305,40 @@ void InitializeGL()
                           0); //offset = 0
     glEnableVertexAttribArray(0);
 
-    MvLGL = glGetUniformLocation(lightID,"MvL");
+
+
+// ------------ sphere ---------------
+
+
+
+
+    sphereID = compile_shaders(vshader_sphere, fshader_sphere);
+
+    glGenVertexArrays(1, &VertexArraySphere);
+    glBindVertexArray(VertexArraySphere);
+
+    ///--- Generate memory for VBO
+    //GLuint VBO_Sphere;
+    glGenBuffers(1, &VBO);
+    /// The subsequent commands will affect the specified buffer
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    /// Pass the vertex positions to OpenGL
+    glBufferData(GL_ARRAY_BUFFER, sizeof(octa_vpoints), octa_vpoints, GL_STATIC_DRAW);
+
+
+    glUseProgram(sphereID);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,
+                          3, //size per vertex (3 floats for cord)
+                          GL_FLOAT,
+                          false, //don't normalize
+                          0, //stride = 0
+                          0); //offset = 0
+    glEnableVertexAttribArray(0);
+    MvGL_sphere = glGetUniformLocation(sphereID,"Mv");
+    modelGL_sphere = glGetUniformLocation(sphereID, "model");
+    viewGL_sphere = glGetUniformLocation(sphereID,"view");
+    prGL_sphere = glGetUniformLocation(sphereID,"pr");
 
 
 
@@ -265,8 +350,8 @@ void MouseMove(double x, double y)
     lastX = vppos_x;
     lastY = vppos_y;
    //the pointer has moved
-   vppos_x = (float)(x) / 256 - 1;
-   vppos_y = 1 - (float)(y) / 256;
+   vppos_x = (float)(x) / (width/2) - 1;
+   vppos_y = 1 - (float)(y) / (height/2);
    mousemoved= true;
 }
 
@@ -305,12 +390,28 @@ void OnPaint()
     glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
     glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
     glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(model));
+    glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
-
-
     glUseProgram(0);
     glBindVertexArray(0);
+
+    glUseProgram(programID);
+    glBindVertexArray(VertexArrayID);
+    glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(viewSQ));
+    glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(prSQ));
+    glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
+    glUniform3f(objectColorGL, 0.3f,0.5f,0.31f);
+    glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
+    glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
+    glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(modelSQ));
+    glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
+    glDrawArrays(GL_TRIANGLES, 0 , 36);
+    //Clean up the openGL context for other drawings
+    glUseProgram(0);
+    glBindVertexArray(0);
+
+
 
 
     glUseProgram(lightID);
@@ -319,6 +420,26 @@ void OnPaint()
     glDrawArrays(GL_TRIANGLES,0,36);
     glUseProgram(0);
     glBindVertexArray(0);
+
+
+
+
+    glUseProgram(sphereID);
+    glBindVertexArray(VertexArraySphere);
+    mat4 modelS;
+    modelS = translate(modelS, vec3(-1.25f,-0.35f,0.75f));
+    glUniformMatrix4fv(MvGL_sphere,1,GL_FALSE,value_ptr(MvL));
+    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(view));
+    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(pr));
+    glUniformMatrix4fv(modelGL_sphere,1,GL_FALSE,value_ptr(modelS));
+    //glDrawArrays(GL_TRIANGLES,0,6);
+    glUseProgram(0);
+    glBindVertexArray(0);
+
+
+
+
+
 
 
 
@@ -339,10 +460,10 @@ void HandleLeftClick(){
         F.x = cos(radians(yaws) * cos(radians(pitchs)));
         F.y = sin(radians(pitchs));
         F.z = sin(radians(yaws)) * cos(radians(pitchs));
-        //normalize(F);
+        normalize(F);
         camPos = F;
         //model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
-        view = lookAt(camPos,target,up);
+        view = lookAt(camPos,vec3(0,0,0),up);
         //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
         //Mv = pr * view * model;
 
@@ -352,6 +473,7 @@ void HandleLeftClick(){
 
 void HandleRightClick(){
     if (rightButtonPressed){
+
         if (vppos_y > lastY){
             zoom += 5;
             pr = perspective(/* zoom */ radians(zoom),(float)width/(float)height,0.1f,100.0f);
@@ -366,8 +488,15 @@ void HandleRightClick(){
 
 void OnTimer()
 {
+    timercount++;
     HandleLeftClick();
     HandleRightClick();
+    modelSQ = rotate(modelSQ, radians(25.0f), vec3(1.0f,1.0f,1.5f));
+
+    GLfloat radius = 2.5f;
+    GLfloat camX = cos(glfwGetTime()*radius);
+    GLfloat camZ = sin(glfwGetTime()*radius);
+    viewSQ = lookAt(vec3(camX,0.0,camZ), camPos,up);
 }
 
 int main(int, char **){
