@@ -92,7 +92,7 @@ Canvas canvas;
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
    };
 
- //used for sphere only
+ //used for sphere only to deform square into triangle
 GLfloat square_vertices[36][3] = {
     {-0.5f, -0.5f, -0.5f},
     {0.5f, -0.5f, -0.5f},
@@ -137,48 +137,50 @@ GLfloat square_vertices[36][3] = {
     {-0.5f,  0.5f, -0.5f},
 };
 
+//vertices with texture coordinates for square
+//no normals for color
 const GLfloat vtexcoord[] = {
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-     1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-    1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-    0.0f, 1.0f,
-    1.0f, 1.0f,
-    1.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 0.0f,
-     0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
 
-    0.0f, 1.0f,
-    1.0f, 1.0f,
-    1.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 0.0f,
-     0.0f, 1.0f
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 
 };
 
@@ -368,20 +370,13 @@ const char * fshader_square = " \
         const char * vshader_sky = " \
                 #version 330 core \n\
                 layout (location = 0) in vec3 position; \
-                layout (location = 1) in vec3 normal;\
-                in vec3 vpoint;\
-                in vec2 vtexcoord; \
+                layout (location = 2) in vec2 vtexcoord;\
+                out vec2 uv; \
                 uniform mat4 model; \
                 uniform mat4 view;\
                 uniform mat4 pr;\
-                uniform mat4 Mv;\
-                out vec3 Normal;\
-                out vec3 FragPos;\
-                out vec2 uv; \
                 void main() { \
                     gl_Position =  pr*view*model*vec4(position,1.0f);\
-                    Normal = normal;\
-                    FragPos = vec3(model*vec4(position,1.0f));\
                     uv = vec2(vtexcoord.x, 1.0 - vtexcoord.y);\
                 } \
                 ";
@@ -390,16 +385,9 @@ const char * fshader_square = " \
                 #version 330 core \n\
                 out vec4 color;\
                 in vec2 uv; \
-                in vec3 Normal; \
-                in vec3 FragPos;\
                 uniform sampler2D tex;\
-                uniform float texZoom;\
-                 \
-                uniform vec3 objectColor;\
                 void main() {\
-                    vec2 uv_centre = vec2(0.5,0.5);\
-                    vec2 uv_zoom = texZoom * (uv-uv_centre)+uv_centre;\
-                    color = vec4(0.1,0.5,0.7,0.1);\
+                    color = texture(tex,uv);\
                 }\
                 ";
 
@@ -435,9 +423,10 @@ GLuint VertexArraySkyBox = 0;
 GLuint modelGL_sky = 0;
 GLuint viewGL_sky = 0;
 GLuint prGL_sky = 0;
+GLuint skytexture;
+GLuint skytex_bindingpoint;
 
 
-GLuint tex, texcoordbuffer;
 
 
 void InitializeCam(){
@@ -604,28 +593,54 @@ void InitializeGL()
 
 
     glUseProgram(skyBoxID);
-    /*
-     * Need to do with other VBO different than the one used for the squares
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint),vpoint,GL_STATIC_DRAW);
 
+    GLuint VBO_sky;
+    glGenBuffers(1,&VBO_sky);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_sky);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vtexcoord),vtexcoord,GL_STATIC_DRAW);
+
+    //glUseProgram(skyBoxID);
     glVertexAttribPointer(0,
-                      3, //size per vertex (3 floats for cord)
-                      GL_FLOAT,
-                      false, //don't normalize
-                      6* sizeof(GLfloat), //stride = 0
-                      0); //offset = 0
+                          3, //size per vertex (3 floats for cord)
+                          GL_FLOAT,
+                          false, //don't normalize
+                          5 * sizeof(GLfloat), //stride = 0
+                          (GLvoid*)0); //offset = 0
     glEnableVertexAttribArray(0);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(vtexcoord),vtexcoord,GL_STATIC_DRAW);
-    glVertexAttribPointer(1,2,GL_FLOAT,false,2*sizeof(vtexcoord),(GLvoid*)0);
-    glEnableVertexAttribArray(1);
-    */
+    glVertexAttribPointer(2,
+                          2, //size per vertex (3 floats for cord)
+                          GL_FLOAT,
+                          false, //don't normalize
+                          5 * sizeof(GLfloat), //stride = 0
+                          (GLvoid*)(3*sizeof(GLfloat))); //offset = 0
+    glEnableVertexAttribArray(2);
+
+    Texture texSky = LoadPNGTexture("sky.png");
+
+    glGenTextures(1,&skytexture);
+    glBindTexture(GL_TEXTURE_2D,skytexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texSky.width,texSky.height,0,GL_RGB,GL_UNSIGNED_BYTE,texSky.dataptr);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D,0);
+
+
+    skytex_bindingpoint = glGetUniformLocation(skyBoxID,"tex");
+
+
     modelGL_sky = glGetUniformLocation(skyBoxID, "model");
     viewGL_sky = glGetUniformLocation(skyBoxID,"view");
     prGL_sky = glGetUniformLocation(skyBoxID,"pr");
 
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
+
+
+
+
 
 
 
@@ -666,6 +681,7 @@ void OnPaint()
 
     //Binding the openGL context
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
 
     //main sphere
     glUseProgram(sphereID);
@@ -684,10 +700,8 @@ void OnPaint()
     glBindVertexArray(0);
 
     //revolving cube around main sphere
-    glBindTexture(GL_TEXTURE_2D, tex);
     glUseProgram(programID);
     glBindVertexArray(VertexArrayID);
-    glUniform1i(glGetUniformLocation(programID,"tex"),0);
     glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(viewSQ));
     glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(prSQ));
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
@@ -703,16 +717,17 @@ void OnPaint()
 
     //skybox
     //TODO fix texture
-
+    glUniform1i(skytex_bindingpoint,0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, skytexture);
     glUseProgram(skyBoxID);
-    glBindVertexArray(VertexArrayID);
+    glBindVertexArray(VertexArraySkyBox);
     mat4 modelS;
-    modelS = translate(modelS, vec3(0.0f,0.0f,-2.0f));
+    modelS = translate(modelS, vec3(0.25f,0.0f,-2.0f));
     mat4 prS;
-    prS = perspective(radians(12.75f),(float)width/(float)height,0.1f,100.0f);
+    prS = perspective(radians(25.75f),(float)width/(float)height,0.1f,100.0f);
     glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(view));
     glUniformMatrix4fv(prGL_sky,1,GL_FALSE,value_ptr(prS));
-    glUniform3f(objectColorGL, 0.3f,0.5f,0.31f);
     glUniformMatrix4fv(modelGL_sky,1,GL_FALSE,value_ptr(modelS));
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
@@ -744,7 +759,6 @@ void OnPaint()
     glUniform3f(lightColorGL_sphere, 1.0f,1.0f,1.0f);
     glUniform3f(lightSourceGL_sphere, -0.75f,-1.95f,0.75f);
     glUniform3f(viewPosGL_sphere, camPos.x,camPos.y,camPos.z);
-    //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for sphere testing purposes
     glDrawArrays(GL_TRIANGLES,0,vertices.size());
     glUseProgram(0);
     glBindVertexArray(0);
