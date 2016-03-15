@@ -383,11 +383,11 @@ const char * fshader_square = " \
 
         const char * fshader_sky = " \
                 #version 330 core \n\
-                out vec4 color;\
+                out vec3 color;\
                 in vec2 uv; \
                 uniform sampler2D tex;\
                 void main() {\
-                    color = texture(tex,uv);\
+                    color = texture(tex,uv).rgb;\
                 }\
                 ";
 
@@ -623,7 +623,7 @@ void InitializeGL()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texSky.width,texSky.height,0,GL_RGB,GL_UNSIGNED_BYTE,texSky.dataptr);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,texSky.width,texSky.height,0,GL_RGBA,GL_UNSIGNED_BYTE,texSky.dataptr);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
 
@@ -723,7 +723,7 @@ void OnPaint()
     glUseProgram(skyBoxID);
     glBindVertexArray(VertexArraySkyBox);
     mat4 modelS;
-    modelS = translate(modelS, vec3(0.25f,0.0f,-2.0f));
+    modelS = translate(modelS, vec3(0.0f,0.0f,-2.0f));
     mat4 prS;
     prS = perspective(radians(25.75f),(float)width/(float)height,0.1f,100.0f);
     glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(view));
