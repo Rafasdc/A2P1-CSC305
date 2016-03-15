@@ -725,7 +725,7 @@ void OnPaint()
     mat4 modelS;
     modelS = translate(modelS, vec3(0.0f,0.0f,-2.0f));
     mat4 prS;
-    prS = perspective(radians(25.75f),(float)width/(float)height,0.1f,100.0f);
+    prS = perspective(radians(12.75f),(float)width/(float)height,0.1f,100.0f);
     glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(view));
     glUniformMatrix4fv(prGL_sky,1,GL_FALSE,value_ptr(prS));
     glUniformMatrix4fv(modelGL_sky,1,GL_FALSE,value_ptr(modelS));
