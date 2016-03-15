@@ -191,7 +191,7 @@ const GLfloat vtexcoord[] = {
 vector<GLfloat> vertices;
 vector<GLfloat> normals;
 
-//---------- Code to Subdivide by Trung Bun stackoverflow.com -------------
+//---------- Code to Subdivide Based by Trung Bun stackoverflow.com -------------
 //Used to subdivide square vertices to procedually generate a sphere by generating
 //more triangle per face, until it becomes a sphere object.
 
@@ -332,10 +332,12 @@ const char * fshader_square = " \
                 uniform mat4 Mv;\
                 out vec3 Normal;\
                 out vec3 FragPos;\
+                out vec2 UV;\
                 void main() { \
                     gl_Position =  pr*view*model*vec4(octa_vpoints,1.0f);\
                     Normal = octa_vpoints;\
                     FragPos = vec3(model*vec4(octa_vpoints,1.0f));\
+                    UV = vec2(octa_vpoints.x/2 + 0.5, octa_vpoints.y/2+0.5);\
                 } \
                 ";
 
@@ -343,28 +345,30 @@ const char * fshader_square = " \
                 #version 330 core \n\
                 out vec4 color;\
                 in vec3 Normal;\
-                in vec3 FragPos; \
+                in vec3 FragPos;\
+                in vec2 UV; \
                 uniform vec3 lightSource;\
                 uniform vec3 lightColor;\
                 uniform vec3 objectColor;\
                 uniform vec3 viewPos;\
+                uniform sampler2D tex;\
                 void main() {\
-                float ambientConstant = 0.1f;\
-                vec3 ambient = ambientConstant * lightColor;\
+                    float ambientConstant = 0.1f;\
+                    vec3 ambient = ambientConstant * lightColor;\
                 \
-                vec3 norm = normalize(Normal);\
-                vec3 lightDirection = normalize(lightSource - FragPos);\
-                float diff = max(dot(norm,lightDirection),0.0);\
-                vec3 diffuse = diff * lightColor;\
+                    vec3 norm = normalize(Normal);\
+                    vec3 lightDirection = normalize(lightSource - FragPos);\
+                    float diff = max(dot(norm,lightDirection),0.0);\
+                    vec3 diffuse = diff * lightColor;\
                 \
-                float specIntensity = 0.25f;\
-                vec3 viewD = normalize(viewPos-FragPos);\
-                vec3 reflectD = reflect(-lightDirection,norm);\
-                float spec = pow(max(dot(viewPos,reflectD),0.0),1);\
-                vec3 finalSpecular = specIntensity * spec * lightColor;\
+                    float specIntensity = 0.25f;\
+                    vec3 viewD = normalize(viewPos-FragPos);\
+                    vec3 reflectD = reflect(-lightDirection,norm);\
+                    float spec = pow(max(dot(viewPos,reflectD),0.0),1);\
+                    vec3 finalSpecular = specIntensity * spec * lightColor;\
                 \
-                vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
-                color = vec4(toApply,1.0f);\
+                    vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
+                    color = vec4(toApply,1.0f);\
                 }\
                 ";
         const char * vshader_sky = " \
@@ -417,14 +421,18 @@ GLuint objectColorGL_sphere = 0;
 GLuint lightColorGL_sphere = 0;
 GLuint lightSourceGL_sphere = 0;
 GLuint viewPosGL_sphere = 0;
+GLuint spheretex;
 
 GLuint skyBoxID = 0;
 GLuint VertexArraySkyBox = 0;
 GLuint modelGL_sky = 0;
 GLuint viewGL_sky = 0;
 GLuint prGL_sky = 0;
+
 GLuint skytexture;
 GLuint skytex_bindingpoint;
+GLuint sunTexture;
+GLuint suntex_bindingpoint;
 
 
 
@@ -581,6 +589,7 @@ void InitializeGL()
     lightColorGL_sphere = glGetUniformLocation(sphereID,"lightColor");
     lightSourceGL_sphere = glGetUniformLocation(sphereID, "lightSource");
     viewPosGL_sphere = glGetUniformLocation(sphereID,"viewPos");
+    spheretex = glGetUniformLocation(sphereID,"tex");
 
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
@@ -599,7 +608,6 @@ void InitializeGL()
     glBindBuffer(GL_ARRAY_BUFFER, VBO_sky);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vtexcoord),vtexcoord,GL_STATIC_DRAW);
 
-    //glUseProgram(skyBoxID);
     glVertexAttribPointer(0,
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
@@ -615,8 +623,19 @@ void InitializeGL()
                           (GLvoid*)(3*sizeof(GLfloat))); //offset = 0
     glEnableVertexAttribArray(2);
 
-    Texture texSky = LoadPNGTexture("sky.png");
 
+
+    skytex_bindingpoint = glGetUniformLocation(skyBoxID,"tex");
+    modelGL_sky = glGetUniformLocation(skyBoxID, "model");
+    viewGL_sky = glGetUniformLocation(skyBoxID,"view");
+    prGL_sky = glGetUniformLocation(skyBoxID,"pr");
+
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+
+//---------------------- Textures ----------------------------
+
+    Texture texSky = LoadPNGTexture("sky.png");
     glGenTextures(1,&skytexture);
     glBindTexture(GL_TEXTURE_2D,skytexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -627,18 +646,16 @@ void InitializeGL()
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
 
-
-    skytex_bindingpoint = glGetUniformLocation(skyBoxID,"tex");
-
-
-    modelGL_sky = glGetUniformLocation(skyBoxID, "model");
-    viewGL_sky = glGetUniformLocation(skyBoxID,"view");
-    prGL_sky = glGetUniformLocation(skyBoxID,"pr");
-
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);
-
-
+    Texture texSun = LoadPNGTexture("sun.png");
+    glGenTextures(1,&suntexture);
+    glBindTexture(GL_TEXTURE_2D,sunTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,texSun.width,texSun.height,0,GL_RGBA,GL_UNSIGNED_BYTE,texSun.dataptr);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D,0);
 
 
 
@@ -681,7 +698,7 @@ void OnPaint()
 
     //Binding the openGL context
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
+   //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
 
     //main sphere
     glUseProgram(sphereID);
@@ -698,6 +715,7 @@ void OnPaint()
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D,0);
 
     //revolving cube around main sphere
     glUseProgram(programID);
@@ -716,7 +734,6 @@ void OnPaint()
     glBindVertexArray(0);
 
     //skybox
-    //TODO fix texture
     glUniform1i(skytex_bindingpoint,0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, skytexture);
@@ -724,15 +741,19 @@ void OnPaint()
     glBindVertexArray(VertexArraySkyBox);
     mat4 modelS;
     modelS = translate(modelS, vec3(0.0f,0.0f,-2.0f));
+    //modelS = rotate(modelS, radians(25.0f), vec3(1.0f,0.0f,0.5f));
     mat4 prS;
-    prS = perspective(radians(12.75f),(float)width/(float)height,0.1f,100.0f);
-    glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(view));
+    prS = perspective(radians(10.75f),(float)width/(float)height,0.1f,100.0f);
+    mat4 viewS;
+    viewS = lookAt(vec3(camPos.x,camPos.y, -7.75f),target,up);
+    glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(viewS));
     glUniformMatrix4fv(prGL_sky,1,GL_FALSE,value_ptr(prS));
     glUniformMatrix4fv(modelGL_sky,1,GL_FALSE,value_ptr(modelS));
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D,0);
 
 
 
@@ -779,11 +800,13 @@ void HandleLeftClick(){
         vec3 F;
         F.x = cos(radians(yaws)  * cos(radians(pitchs)));
         F.y = sin(radians(pitchs));
-        F.z = sin(radians(yaws))  * cos(radians(pitchs));
-        normalize(F);
-        //camPos = F;
+        //F.z = sin(radians(yaws))  * cos(radians(pitchs));
+        //normalize(F);
+        //camPos.x = F.x;
+        //camPos.y = F.y;
+        //camPos.z = F.z;
         //model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
-        view = lookAt(camPos,F,up);
+        view = lookAt(camPos,target,up);
         //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
         //Mv = pr * view * model;
 
