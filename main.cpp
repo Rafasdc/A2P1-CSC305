@@ -269,6 +269,7 @@ const char * vshader_square = " \
         #version 330 core \n\
         layout (location = 0) in vec3 position; \
         layout (location = 1) in vec3 normal;\
+        in vec2 tex;\
         in vec3 vpoint; \
         uniform mat4 model; \
         uniform mat4 view;\
@@ -276,10 +277,12 @@ const char * vshader_square = " \
         uniform mat4 Mv;\
         out vec3 Normal;\
         out vec3 FragPos; \
+        out vec2 texCoord;\
         void main() { \
             gl_Position =  pr*view*model*vec4(position,1.0f);\
             Normal = normal;\
             FragPos = vec3(model*vec4(position,1.0f));\
+            texCoord = vec2(tex.x, 1.0-tex.y);\
         } \
         ";
 
@@ -288,11 +291,13 @@ const char * fshader_square = " \
         out vec4 color; \
         in vec3 Normal; \
         in vec3 FragPos;\
+        in vec2 texCoord;\
          \
         uniform vec3 objectColor;\
         uniform vec3 lightColor; \
         uniform vec3 lightSource;\
-        uniform vec3 viewPos; \
+        uniform vec3 viewPos;\
+        uniform sampler2D tex; \
         \
         void main() {\
             float ambientConstant = 0.1f;\
@@ -394,7 +399,7 @@ const char * fshader_square = " \
                 void main() {\
                     vec2 uv_centre = vec2(0.5,0.5);\
                     vec2 uv_zoom = texZoom * (uv-uv_centre)+uv_centre;\
-                    color = texture(tex,uv);\
+                    color = vec4(0.1,0.5,0.7,0.1);\
                 }\
                 ";
 
@@ -432,7 +437,7 @@ GLuint viewGL_sky = 0;
 GLuint prGL_sky = 0;
 
 
-
+GLuint tex, texcoordbuffer;
 
 
 void InitializeCam(){
@@ -479,25 +484,31 @@ void InitializeGL()
 
 
 
+
+
     ///--- Generate memory for VBO
     GLuint VBO;
     glGenBuffers(1, &VBO);
     /// The subsequent commands will affect the specified buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+
+
+
     /// Pass the vertex positions to OpenGL
     glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint), vpoint, GL_DYNAMIC_DRAW);
 
     ///--- find the binding point in the shader:
     /// "vpoint" in the vertex shader
-    glUseProgram(programID);
+    //glUseProgram(programID);
     //GLuint vpoint_id = glGetAttribLocation(programID, "vpoint");
-    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
                           false, //don't normalize
                           6 * sizeof(GLfloat), //stride = 0
                           0); //offset = 0
+    glEnableVertexAttribArray(0);
     glVertexAttribPointer(1,
                           3, //size per vertex (3 floats for cord)
                           GL_FLOAT,
@@ -505,6 +516,9 @@ void InitializeGL()
                           6 * sizeof(GLfloat), //stride = 0
                           (GLvoid*)(3*sizeof(GLfloat))); //offset = 0
     glEnableVertexAttribArray(1);
+
+
+
     //Find the binding point for the uniform variable
     //glEnableVertexAttribArray(vpoint_id);
     MvGL = glGetUniformLocation(programID,"Mv");
@@ -518,8 +532,8 @@ void InitializeGL()
 
 
 
-    //glEnableVertexAttribArray(0);
-    //glBindVertexArray(0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 
 // ------------- light ---------------
 
@@ -537,6 +551,7 @@ void InitializeGL()
                           6* sizeof(GLfloat), //stride = 0
                           0); //offset = 0
     glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 
 
 
@@ -578,6 +593,10 @@ void InitializeGL()
     lightSourceGL_sphere = glGetUniformLocation(sphereID, "lightSource");
     viewPosGL_sphere = glGetUniformLocation(sphereID,"viewPos");
 
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+
+
 // ---------- skybox ----------------
     skyBoxID = compile_shaders(vshader_sky,fshader_sky);
     glGenVertexArrays(1, &VertexArraySkyBox);
@@ -585,7 +604,11 @@ void InitializeGL()
 
 
     glUseProgram(skyBoxID);
-    glEnableVertexAttribArray(0);
+    /*
+     * Need to do with other VBO different than the one used for the squares
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint),vpoint,GL_STATIC_DRAW);
+
     glVertexAttribPointer(0,
                       3, //size per vertex (3 floats for cord)
                       GL_FLOAT,
@@ -593,44 +616,18 @@ void InitializeGL()
                       6* sizeof(GLfloat), //stride = 0
                       0); //offset = 0
     glEnableVertexAttribArray(0);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(vtexcoord),vtexcoord,GL_STATIC_DRAW);
+    glVertexAttribPointer(1,2,GL_FLOAT,false,2*sizeof(vtexcoord),(GLvoid*)0);
+    glEnableVertexAttribArray(1);
+    */
     modelGL_sky = glGetUniformLocation(skyBoxID, "model");
     viewGL_sky = glGetUniformLocation(skyBoxID,"view");
     prGL_sky = glGetUniformLocation(skyBoxID,"pr");
 
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 
-    GLuint texcoordbuffer;
-    glGenBuffers(1, &texcoordbuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, texcoordbuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vtexcoord), vtexcoord, GL_STATIC_DRAW);
-    GLuint texcoordBindingPosition = glGetAttribLocation(skyBoxID, "vtexcoord");
-    glEnableVertexAttribArray(texcoordBindingPosition);
-    glVertexAttribPointer(texcoordBindingPosition, 2, GL_FLOAT,
-        GL_FALSE, 0, (void *)0);
 
-    /// --- Load the texture image
-    Texture teximage = LoadPNGTexture("texture.png");
-
-    /// --- Set openGL texture parameters
-    GLuint texobject;
-    glGenTextures(1, &texobject);
-    glBindTexture(GL_TEXTURE_2D, texobject);
-    //texture wrapping
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    //texture filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, teximage.width,
-        teximage.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-        teximage.dataptr);
-
-    glGenerateMipmap(GL_TEXTURE_2D);
-    /// --- Activate the loaded texture in channel 0
-    GLuint tex_bindingpoint = glGetUniformLocation(skyBoxID, "tex");
-    glUniform1i(tex_bindingpoint, 0 /*GL_TEXTURE0*/);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texobject);
 
 }
 
@@ -673,22 +670,24 @@ void OnPaint()
     //main sphere
     glUseProgram(sphereID);
     glBindVertexArray(VertexArraySphere);
-    glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(view));
-    glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(pr));
-    glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
-    glUniform3f(objectColorGL, 1.0f,0.5f,0.31f);
-    glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
-    glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
-    glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(model));
-    glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
+    glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(view));
+    glUniformMatrix4fv(prGL_sphere,1,GL_FALSE,value_ptr(pr));
+    glUniformMatrix4fv(MvGL_sphere,1,GL_FALSE,value_ptr(Mv));
+    glUniform3f(objectColorGL_sphere, 1.0f,0.5f,0.31f);
+    glUniform3f(lightColorGL_sphere, 1.0f,1.0f,1.0f);
+    glUniform3f(lightSourceGL_sphere, -0.75f,-1.95f,0.75f);
+    glUniformMatrix4fv(modelGL_sphere,1,GL_FALSE,value_ptr(model));
+    glUniform3f(viewPosGL_sphere, camPos.x,camPos.y,camPos.z);
     glDrawArrays(GL_TRIANGLES,0,vertices.size());
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
 
-    //revolving cube aroung main sphere
+    //revolving cube around main sphere
+    glBindTexture(GL_TEXTURE_2D, tex);
     glUseProgram(programID);
     glBindVertexArray(VertexArrayID);
+    glUniform1i(glGetUniformLocation(programID,"tex"),0);
     glUniformMatrix4fv(viewGL,1,GL_FALSE,value_ptr(viewSQ));
     glUniformMatrix4fv(prGL,1,GL_FALSE,value_ptr(prSQ));
     glUniformMatrix4fv(MvGL,1,GL_FALSE,value_ptr(Mv));
