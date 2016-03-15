@@ -368,7 +368,7 @@ const char * fshader_square = " \
                     vec3 finalSpecular = specIntensity * spec * lightColor;\
                 \
                     vec3 toApply = (ambient+diffuse+finalSpecular) * objectColor;\
-                    color = vec4(toApply,1.0f);\
+                    color = mix(texture(tex,UV),vec4(toApply,1.0f),0.5);\
                 }\
                 ";
         const char * vshader_sky = " \
@@ -428,11 +428,10 @@ GLuint VertexArraySkyBox = 0;
 GLuint modelGL_sky = 0;
 GLuint viewGL_sky = 0;
 GLuint prGL_sky = 0;
+GLuint skytex_bindingpoint;
 
 GLuint skytexture;
-GLuint skytex_bindingpoint;
 GLuint sunTexture;
-GLuint suntex_bindingpoint;
 
 
 
@@ -647,7 +646,7 @@ void InitializeGL()
     glBindTexture(GL_TEXTURE_2D,0);
 
     Texture texSun = LoadPNGTexture("sun.png");
-    glGenTextures(1,&suntexture);
+    glGenTextures(1,&sunTexture);
     glBindTexture(GL_TEXTURE_2D,sunTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -656,6 +655,19 @@ void InitializeGL()
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,texSun.width,texSun.height,0,GL_RGBA,GL_UNSIGNED_BYTE,texSun.dataptr);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
+
+    Texture texMetal = LoadPNGTexture("sun.png");
+    glGenTextures(1,&metalTexture);
+    glBindTexture(GL_TEXTURE_2D, metalTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,texMetal.width,texSun.height,0,GL_RGBA,GL_UNSIGNED_BYTE,texMetal.dataptr);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D,0);
+
+
 
 
 
@@ -701,6 +713,9 @@ void OnPaint()
    //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
 
     //main sphere
+    glUniform1i(spheretex,0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sunTexture);
     glUseProgram(sphereID);
     glBindVertexArray(VertexArraySphere);
     glUniformMatrix4fv(viewGL_sphere,1,GL_FALSE,value_ptr(view));
@@ -770,6 +785,11 @@ void OnPaint()
 
 
     //secondary sphere acts like a moon
+    /*
+    glUniform1i(spheretex,0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, sunTexture);
+    */
     glUseProgram(sphereID);
     glBindVertexArray(VertexArraySphere);
     glUniformMatrix4fv(MvGL_sphere,1,GL_FALSE,value_ptr(MvL));
@@ -783,6 +803,7 @@ void OnPaint()
     glDrawArrays(GL_TRIANGLES,0,vertices.size());
     glUseProgram(0);
     glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D,0);
 
 }
 
