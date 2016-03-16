@@ -2,6 +2,8 @@
 #include <math.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtx/rotate_vector.hpp"
+#include "glm/gtx/euler_angles.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "incbase.h"
 
@@ -449,7 +451,7 @@ void InitializeCam(){
        //}
 
 
-    model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
+    model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.0f));//changed
     view = lookAt(camPos,target,up);
     pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
     Mv = pr * view * model;
@@ -471,25 +473,16 @@ void InitializeGL()
     //Compile the shaders
     programID = compile_shaders(vshader_square, fshader_square);
 
-
-
     //Generate Vertex Array and bind the vertex buffer data
 
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
-
-
-
-
 
     ///--- Generate memory for VBO
     GLuint VBO;
     glGenBuffers(1, &VBO);
     /// The subsequent commands will affect the specified buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-
-
 
     /// Pass the vertex positions to OpenGL
     glBufferData(GL_ARRAY_BUFFER, sizeof(vpoint), vpoint, GL_DYNAMIC_DRAW);
@@ -656,6 +649,7 @@ void InitializeGL()
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
 
+    /*
     Texture texMetal = LoadPNGTexture("sun.png");
     glGenTextures(1,&metalTexture);
     glBindTexture(GL_TEXTURE_2D, metalTexture);
@@ -666,6 +660,7 @@ void InitializeGL()
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,texMetal.width,texSun.height,0,GL_RGBA,GL_UNSIGNED_BYTE,texMetal.dataptr);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
+    */
 
 
 
@@ -677,12 +672,14 @@ void InitializeGL()
 
 void MouseMove(double x, double y)
 {
+
     lastX = vppos_x;
     lastY = vppos_y;
    //the pointer has moved
    vppos_x = (float)(x) / (width/2) - 1;
    vppos_y = 1 - (float)(y) / (height/2);
    mousemoved= true;
+
 }
 
 void MouseButton(MouseButtons mouseButton, bool press)
@@ -806,33 +803,32 @@ void OnPaint()
     glBindTexture(GL_TEXTURE_2D,0);
 
 }
-
 void HandleLeftClick(){
     if (leftButtonPressed){
         float xoffset = vppos_x - lastX;
         float yoffset = lastY - vppos_y;
 
-        xoffset *= 195;
-        yoffset *= 195;
+        xoffset *= 0.25f;
+        yoffset *= 0.25f;
+        mat4 rotateEulerX;
+        mat4 rotateEulerY;
 
         yaws += xoffset;
         pitchs += yoffset;
-
-        vec3 F;
-        F.x = cos(radians(yaws)  * cos(radians(pitchs)));
-        F.y = sin(radians(pitchs));
-        //F.z = sin(radians(yaws))  * cos(radians(pitchs));
-        //normalize(F);
-        //camPos.x = F.x;
-        //camPos.y = F.y;
-        //camPos.z = F.z;
-        //model = rotate(model, radians(25.0f), vec3(1.0f,0.0f,0.5f));
-        view = lookAt(camPos,target,up);
-        //pr = perspective(/* zoom */ radians(-85.0f),(float)width/(float)height,0.1f,100.0f);
-        //Mv = pr * view * model;
-
-
-
+        if (vppos_x > lastX){
+            rotateEulerX= eulerAngleXY(radians(pitchs*0.05),radians(yaws*0.025));
+            view = view*rotateEulerX;
+        } else if (vppos_x < lastX){
+            rotateEulerX= eulerAngleXY(radians(-pitchs*0.05),radians(-yaws*0.025));
+            view = view*rotateEulerX;
+        }
+        if (vppos_y > lastY){
+            rotateEulerY = eulerAngleXY(radians(yaws*0.05),radians(pitchs*0.025));
+            view = view * rotateEulerY;
+        } else if (vppos_y < lastY){
+            rotateEulerY = eulerAngleXY(radians(-yaws*0.05),radians(-pitchs*0.025));
+            view = view * rotateEulerY;
+        }
     }
 
 }
@@ -856,7 +852,9 @@ void HandleRightClick(){
 void OnTimer()
 {
     timercount++;
+
     HandleLeftClick();
+    mousemoved = false;
     HandleRightClick();
     modelSQ = rotate(modelSQ, radians(25.0f), vec3(1.0f,1.0f,1.5f));
 
