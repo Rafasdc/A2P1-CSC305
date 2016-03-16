@@ -755,7 +755,7 @@ void OnPaint()
     modelS = translate(modelS, vec3(0.0f,0.0f,-2.0f));
     //modelS = rotate(modelS, radians(25.0f), vec3(1.0f,0.0f,0.5f));
     mat4 prS;
-    prS = perspective(radians(10.75f),(float)width/(float)height,0.1f,100.0f);
+    prS = perspective(radians(10.90f),(float)width/(float)height,0.1f,100.0f);
     mat4 viewS;
     viewS = lookAt(vec3(camPos.x,camPos.y, -7.75f),target,up);
     glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(viewS));
@@ -829,6 +829,19 @@ void HandleLeftClick(){
             rotateEulerY = eulerAngleXY(radians(-yaws*0.05),radians(-pitchs*0.025));
             view = view * rotateEulerY;
         }
+        /* Original Yaw and Pitch function from Part1
+         * It caused a horrible bug that deformed my sphere so its not used
+         * It works on part1 though.
+        */
+        /*
+        vec3 F;
+        F.x = cos(radians(yaws) * cos(radians(pitchs)));
+        F.y = sin(radians(pitchs));
+        F.z = sin(radians(yaws)) * cos(radians(pitchs));
+        normalize(F);
+        camPos = F;
+        view = lookAt(camPos,vec3(0,0,0),up);
+        */
     }
 
 }
