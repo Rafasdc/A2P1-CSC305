@@ -127,14 +127,14 @@ void HandleLeftClick(){
         float xoffset = vppos_x - lastX;
         float yoffset = lastY - vppos_y;
 
-        xoffset *= 45.5;
-        yoffset *= 45.5;
+        xoffset *= 55.5;
+        yoffset *= 55.5;
 
         yaws += xoffset;
         pitchs += yoffset;
 
         vec3 F;
-        F.x = cos(radians(yaws) * cos(radians(pitchs)));
+        F.x = cos(radians(yaws)) * cos(radians(pitchs));
         F.y = sin(radians(pitchs));
         F.z = sin(radians(yaws)) * cos(radians(pitchs));
         normalize(F);
