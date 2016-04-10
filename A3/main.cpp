@@ -6,8 +6,10 @@
 #include "glm/gtx/euler_angles.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_access.hpp"
+#include "glm/gtc/noise.hpp"
 #include "incbase.h"
 #include "shaders.h"
+#include "spline.h"
 
 
 using namespace glm;
@@ -192,7 +194,8 @@ const GLfloat vtexcoord[] = {
 
 };
 
-const GLfloat controlPoints[3][3] = {
+const GLfloat controlPoints[4][3] = {
+    {0,0,-3},
     {875,600,-3},
     {600,390,-20},
     {315,600,-3}
@@ -529,13 +532,6 @@ void InitializeGL()
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D,0);
 
-
-
-
-
-
-
-
 }
 
 void MouseMove(double x, double y)
@@ -576,8 +572,8 @@ void OnPaint()
 
 
     //Binding the openGL context
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   //glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); //for drawing testing purposes
 
     //main sphere
     glUniform1i(spheretex,0);
@@ -730,7 +726,7 @@ void HandleLeftClick(){
         */
 
 
-        /*
+
         //freely look around code like a FPS
         float xoffset = vppos_x - lastX;
         float yoffset = lastY - vppos_y;
@@ -748,15 +744,19 @@ void HandleLeftClick(){
         normalize(F);
         target = F;
         view = lookAt(camPos,target+camPos,up);
-        */
+
 
 
     }
 
 }
-
+float t = 0;
+vec3 V;
+vec3 P;
+vec3 Q;
 void HandleRightClick(){
     if (rightButtonPressed){
+        //t += 0.05;
         /*
         if (vppos_y > lastY){
             zoom += 5;
@@ -768,14 +768,33 @@ void HandleRightClick(){
             //Mv = pr * view * model;
         }
         */
+        //t += 0.05;
+        /*
+        if (t < 1){
+        P.x = bPoint(t,controlPoints[0][0],controlPoints[1][0], controlPoints[2][0], controlPoints[3][0]);
+        P.y = bPoint(t,controlPoints[0][1],controlPoints[1][1], controlPoints[2][1], controlPoints[3][1]);
+        P.z = bPoint(t,controlPoints[0][2],controlPoints[1][2], controlPoints[2][2], controlPoints[3][2]);
+        V.x = bTangent(t,controlPoints[0][0],controlPoints[1][0], controlPoints[2][0], controlPoints[3][0]);
+        V.y = bTangent(t,controlPoints[0][1],controlPoints[1][1], controlPoints[2][1], controlPoints[3][1]);
+        V.z = bTangent(t,controlPoints[0][2],controlPoints[1][2], controlPoints[2][2], controlPoints[3][2]);
+        Q.x = bSecond(t,controlPoints[0][0],controlPoints[1][0], controlPoints[2][0], controlPoints[3][0]);
+        Q.y = bSecond(t,controlPoints[0][1],controlPoints[1][1], controlPoints[2][1], controlPoints[3][1]);
+        Q.z = bSecond(t,controlPoints[0][2],controlPoints[1][2], controlPoints[2][2], controlPoints[3][2]);
+        view = lookAt(P,target,up);
+        }
+        */
     }
 
 }
-
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
 void OnTimer()
 {
     timercount++;
 
+    GLfloat currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
     HandleLeftClick();
     mousemoved = false;
     HandleRightClick();
@@ -788,6 +807,16 @@ void OnTimer()
     SQCam.x = camX;
     SQCam.z = camZ;
     viewSQ = lookAt(SQCam, vec3(0.0f,1.1f,5.0f),up);
+    GLfloat camSpeed = 0.01f;
+    /*
+    if (rightButtonPressed){
+    camPos+= camSpeed * target;
+    }
+    if (leftButtonPressed){
+    camPos+= normalize(cross(target,up))*camSpeed;
+    }
+    view = lookAt(camPos,camPos+target,up);
+    */
 
 }
 

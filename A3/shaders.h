@@ -1,6 +1,8 @@
 #ifndef SHADERS_H
 #define SHADERS_H
 
+#include "glm/gtc/noise.hpp"
+
 const char * vshader_light = " \
         #version 330 core \n\
         in vec3 vpoint; \
@@ -37,7 +39,7 @@ const char * vshader_square = " \
             gl_Position =  pr*view*model*vec4(position,1.0f);\
             Normal = normal;\
             FragPos = vec3(model*vec4(position,1.0f));\
-            UV = vec2(texcoord);\
+            UV = +vec2(texcoord);\
         } \
         ";
 
