@@ -36,10 +36,11 @@ const char * vshader_square = " \
         out vec3 FragPos; \
         out vec2 UV;\
         void main() { \
-            gl_Position =  pr*view*model*vec4(position,1.0f);\
+            vec3 posScaled = vec3(position.x,noise1(position.y)*position.y,position.z);\
+            gl_Position =  pr*view*model*vec4(position,1);\
             Normal = normal;\
             FragPos = vec3(model*vec4(position,1.0f));\
-            UV = +vec2(texcoord);\
+            UV = vec2(texcoord);\
         } \
         ";
 
@@ -92,7 +93,7 @@ const char * fshader_square = " \
                     gl_Position =  pr*view*model*vec4(octa_vpoints,1.0f);\
                     Normal = octa_vpoints;\
                     FragPos = vec3(model*vec4(octa_vpoints,1.0f));\
-                    UV = vec2(octa_vpoints.x/2 + 0.5, octa_vpoints.y/2 + 0.5);\
+                    UV = vec2(octa_vpoints.x/2 + 0.5, octa_vpoints.y/2+0.5);\
                 } \
                 ";
 
