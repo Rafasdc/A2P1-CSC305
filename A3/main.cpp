@@ -11,7 +11,6 @@
 #include "shaders.h"
 #include "spline.h"
 
-
 using namespace glm;
 using namespace std;
 
@@ -202,7 +201,7 @@ const GLfloat controlPoints[4][3] = {
 };
 
 
-\
+
 
 
 vector<GLfloat> vertices;
@@ -290,6 +289,7 @@ GLuint objectColorGL_sphere = 0;
 GLuint lightColorGL_sphere = 0;
 GLuint lightSourceGL_sphere = 0;
 GLuint viewPosGL_sphere = 0;
+GLuint scalemat = 0;
 GLuint spheretex;
 
 GLuint skyBoxID = 0;
@@ -452,6 +452,7 @@ void InitializeGL()
     lightColorGL_sphere = glGetUniformLocation(sphereID,"lightColor");
     lightSourceGL_sphere = glGetUniformLocation(sphereID, "lightSource");
     viewPosGL_sphere = glGetUniformLocation(sphereID,"viewPos");
+    scalemat = glGetUniformLocation(sphereID,"scalemat");
     spheretex = glGetUniformLocation(sphereID,"tex");
 
     glEnableVertexAttribArray(0);
@@ -495,6 +496,7 @@ void InitializeGL()
 
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
+
 
 //---------------------- Textures ----------------------------
 
@@ -605,11 +607,13 @@ void OnPaint()
     glUniform3f(lightColorGL, 1.0f,1.0f,1.0f);
     glUniform3f(lightSourceGL, -0.75f,-1.95f,0.75f);
     glUniformMatrix4fv(modelGL,1,GL_FALSE,value_ptr(modelSQ));
-    glUniform3f(viewPosGL, camPos.x,camPos.y,camPos.z);
+    glUniform3f(viewPosGL, SQCam.x,SQCam.y,SQCam.z);
     glDrawArrays(GL_TRIANGLES, 0 , 36);
     //Clean up the openGL context for other drawings
     glUseProgram(0);
     glBindVertexArray(0);
+
+
 
 
     //skybox
@@ -623,7 +627,7 @@ void OnPaint()
     mat4 prS;
     prS = perspective(radians(10.90f),(float)width/(float)height,0.1f,100.0f);
     mat4 viewS;
-    viewS = lookAt(vec3(0,0, -7.75f),target,up);
+    viewS = lookAt(vec3(0,0, -7.75f),vec3(0,0,0),vec3(0,1,0));
     glUniformMatrix4fv(viewGL_sky,1,GL_FALSE,value_ptr(viewS));
     glUniformMatrix4fv(prGL_sky,1,GL_FALSE,value_ptr(prS));
     glUniformMatrix4fv(modelGL_sky,1,GL_FALSE,value_ptr(modelS));
@@ -633,11 +637,14 @@ void OnPaint()
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D,0);
 
+
+
     /*
     //Light source
     //for viewing purposes/debugging
     glUseProgram(lightID);
     glBindVertexArray(VertexArrayID);
+    glEnableVertexAttribArray(0);
     glUniformMatrix4fv(MvLGL,1,GL_FALSE,value_ptr(MvL));
     glDrawArrays(GL_TRIANGLES,0,36);
     glUseProgram(0);
@@ -757,7 +764,7 @@ vec3 Q;
 void HandleRightClick(){
     if (rightButtonPressed){
         //t += 0.05;
-        /*
+
         if (vppos_y > lastY){
             zoom += 5;
             pr = perspective(radians(zoom),(float)width/(float)height,0.1f,100.0f);
@@ -767,7 +774,7 @@ void HandleRightClick(){
             pr = perspective( radians(zoom),(float)width/(float)height,0.1f,100.0f);
             //Mv = pr * view * model;
         }
-        */
+
         //t += 0.05;
         /*
         if (t < 1){
